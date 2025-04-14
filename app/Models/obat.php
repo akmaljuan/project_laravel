@@ -1,20 +1,22 @@
 <?php
-
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class obat extends Model
+class Obat extends Model
 {
-    protected $table = 'obat';
-    
+    use HasFactory;
+
     protected $fillable = [
         'nama_obat',
         'kemasan',
-        'harga',
+        'harga'
     ];
 
-    public function detailPeriksa(){
-        return $this->hasMany(DetailPeriksa::class, 'id_obat');
+    public function detail_periksas(): HasMany
+    {
+        return $this->hasMany(DetailPeriksa::class, 'id_obat', 'id');
     }
 }
