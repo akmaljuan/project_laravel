@@ -4,15 +4,15 @@
   <style>
     /* Main sidebar styling */
     .main-sidebar {
-      background-color: #88d8b0 !important; /* Hijau Muda */
+      background-color: #d63384 !important; /* Hijau Muda */
       color: #000 !important; /* Warna teks agar lebih kontras */
       width: 300px !important; /* Increased width */
     }
   
     /* Header styling */
     .main-header {
-      background-color: #a8e6cf !important; /* Hijau muda */
-      border-bottom: 1px solid #88d8b0; /* Warna lebih gelap untuk pembatas */
+      background-color: #d63384 !important; /* Hijau muda */
+      border-bottom: 1px solid #d63384; /* Warna lebih gelap untuk pembatas */
       margin-left: 300px !important;
     }
   
