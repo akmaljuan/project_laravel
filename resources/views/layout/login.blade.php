@@ -18,6 +18,14 @@
     <div class="card-body">
       <p class="login-box-msg">Silahkan Login</p>
 
+      {{-- Pesan sukses setelah register --}}
+      @if (session('success'))
+        <div class="alert alert-success">
+          {{ session('success') }}
+        </div>
+      @endif
+
+      {{-- Pesan error validasi --}}
       @if ($errors->any())
         <div class="alert alert-danger">
           <ul>

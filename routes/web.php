@@ -24,7 +24,6 @@ Route::middleware(['auth', 'role:dokter'])->prefix('dokter')->group(function () 
     Route::delete('/obat/{id}', [ObatController::class, 'destroy'])->name('obat.destroy');
     Route::get('/memeriksa', [PeriksaController::class, 'index'])->name('dokter.memeriksa');
     Route::get('/periksa/{id}/edit', [PemeriksaanController::class, 'edit'])->name('dokter.periksa.edit');
-    Route::post('/periksa/{id}', [PemeriksaanController::class, 'update'])->name('dokter.periksa.update');
     Route::put('/periksa/{id}', [PemeriksaanController::class, 'update'])->name('dokter.periksa.update');
 });
 
