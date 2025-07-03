@@ -1,26 +1,25 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DetailPeriksa extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'id_periksa',
-        'id_obat'
-    ];
+    protected $fillable = ['periksa_id', 'obat_id', 'harga'];
 
-    public function periksa(): BelongsTo
-    {
-        return $this->belongsTo(Periksa::class, 'id_periksa');
-    }
+public function periksa()
+{
+    return $this->belongsTo(Periksa::class);
+}
 
-    public function obat(): BelongsTo
+
+
+    public function obat()
     {
-        return $this->belongsTo(Obat::class, 'id_obat');
+        return $this->belongsTo(Obat::class);
     }
 }

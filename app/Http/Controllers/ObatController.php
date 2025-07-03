@@ -10,47 +10,52 @@ class ObatController extends Controller
     public function index()
     {
         $obats = Obat::all();
-        return view('dokter.obat', compact('obats'));
+        return view('admin.obat.index', compact('obats'));
+    }
+
+    public function create()
+    {
+        return view('admin.obat.create');
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'nama_obat' => 'required',
-            'kemasan' => 'required',
+            'nama_obat' => 'required|string|max:255',
+            'kemasan' => 'required|string|max:255',
             'harga' => 'required|numeric',
         ]);
 
         Obat::create($request->all());
-
-        return redirect()->route('obat.index')->with('success', 'Obat berhasil ditambahkan.');
+        return redirect()->route('admin.obat')->with('success', 'Obat berhasil ditambahkan');
     }
 
     public function edit($id)
     {
         $obat = Obat::findOrFail($id);
-        return view('dokter.edit_obat', compact('obat'));
+        return view('admin.obat.edit', compact('obat'));
     }
 
     public function update(Request $request, $id)
     {
+        $obat = Obat::findOrFail($id);
+
         $request->validate([
-            'nama_obat' => 'required',
-            'kemasan' => 'required',
+            'nama_obat' => 'required|string|max:255',
+            'kemasan' => 'required|string|max:255',
             'harga' => 'required|numeric',
         ]);
 
-        $obat = Obat::findOrFail($id);
         $obat->update($request->all());
-
-        return redirect()->route('obat.index')->with('success', 'Obat berhasil diupdate.');
+        return redirect()->route('admin.obat')->with('success', 'Obat berhasil diperbarui');
     }
 
     public function destroy($id)
     {
         $obat = Obat::findOrFail($id);
         $obat->delete();
-
-        return redirect()->route('obat.index')->with('success', 'Obat berhasil dihapus.');
+        return redirect()->route('admin.obat')->with('success', 'Obat berhasil dihapus');
     }
 }
+
+

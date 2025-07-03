@@ -2,107 +2,92 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
+use App\Models\User;
+use App\Models\Pasien;
+use Carbon\Carbon; 
 
 class AuthController extends Controller
 {
-    /**
-     * Menampilkan form login.
-     */
     public function showLoginForm()
     {
-        return view('layout.login');
+        return view('auth.login');
     }
 
-    /**
-     * Menampilkan form register.
-     */
-    public function showRegisterForm()
-    {
-        return view('layout.register');
-    }
-
-    /**
-     * Menangani proses login.
-     */
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ], [
-            'email.required' => 'Email wajib diisi.',
-            'email.email' => 'Email tidak valid.',
-            'password.required' => 'Password wajib diisi.',
-        ]);
-
         $credentials = $request->only('email', 'password');
+
         if (Auth::attempt($credentials)) {
             $request->session()->regenerate();
-            $user = Auth::user();
-            if ($user->role === 'dokter') {
-                return redirect()->route('dokter.dashboard');
-            } elseif ($user->role === 'pasien') {
-                return redirect()->route('pasien.dashboard');
-            }
+
+            $role = Auth::user()->role;
+
+            return match ($role) {
+                'admin' => redirect()->route('admin.index'),
+                'dokter' => redirect()->route('dokter.dashboard'),
+                'pasien' => redirect()->route('pasien.dashboard'),
+                default => redirect()->route('landing'),
+            };
         }
 
-        throw ValidationException::withMessages([
-            'email' => ['Email atau password salah.'],
-        ]);
+        return back()->withErrors([
+            'email' => 'Email atau password salah.',
+        ])->onlyInput('email');
     }
 
-    /**
-     * Menangani proses register (versi tanpa auto-login).
-     */
-    public function register(Request $request)
+    public function showRegisterForm()
     {
-        $request->validate([
-            'nama' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|min:8|confirmed',
-            'role' => 'required|in:dokter,pasien',
-            'alamat' => 'required|string|max:255',
-            'no_hp' => 'required|string|max:15',
-        ], [
-            'nama.required' => 'Nama wajib diisi.',
-            'email.required' => 'Email wajib diisi.',
-            'email.email' => 'Email tidak valid.',
-            'email.unique' => 'Email sudah terdaftar.',
-            'password.required' => 'Password wajib diisi.',
-            'password.min' => 'Password minimal 8 karakter.',
-            'password.confirmed' => 'Konfirmasi password tidak cocok.',
-            'role.required' => 'Role wajib dipilih.',
-            'role.in' => 'Role tidak valid.',
-            'alamat.required' => 'Alamat wajib diisi.',
-            'no_hp.required' => 'Nomor HP wajib diisi.',
-        ]);
-
-        User::create([
-            'nama' => $request->nama,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role,
-            'alamat' => $request->alamat,
-            'no_hp' => $request->no_hp,
-        ]);
-
-        return redirect()->route('login')->with('success', 'Registrasi berhasil! Silakan login.');
+        return view('auth.register');
     }
 
-    /**
-     * Menangani proses logout.
-     */
+    public function register(Request $request)
+{
+    $request->validate([
+        'nama' => 'required|string|max:255',
+        'email' => 'required|email|unique:users,email',
+        'password' => 'required|string|min:8|confirmed',
+        'alamat' => 'required|string',
+        'no_ktp' => 'required|string|max:25|unique:pasiens,no_ktp',
+        'no_hp' => 'required|string|max:50',
+    ]);
+
+    // Simpan ke tabel users
+    $user = User::create([
+        'name' => $request->nama,
+        'email' => $request->email,
+        'password' => Hash::make($request->password),
+        'role' => 'pasien',
+    ]);
+
+    /// Generate nomor RM otomatis: format YYYYMMNNN
+        $count = Pasien::count() + 1;
+        $now = Carbon::now();
+        $year = $now->format('Y');
+        $month = $now->format('m');
+        $newNoRM = $year . $month . str_pad($count, 3, '0', STR_PAD_LEFT);;
+
+    // Simpan ke tabel pasiens
+    Pasien::create([
+        'user_id' => $user->id,
+        'nama' => $request->nama,
+        'alamat' => $request->alamat,
+        'no_ktp' => $request->no_ktp,
+        'no_hp' => $request->no_hp,
+        'no_rm' => $newNoRM,
+    ]);
+
+    Auth::login($user);
+    return redirect()->route('pasien.dashboard');
+}
+
     public function logout(Request $request)
     {
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-
-        return redirect()->route('login')->with('success', 'Berhasil logout.');
+        return redirect()->route('landing');
     }
 }

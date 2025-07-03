@@ -5,84 +5,102 @@ namespace App\Http\Controllers;
 use App\Models\Periksa;
 use App\Models\Obat;
 use App\Models\DetailPeriksa;
-use App\Models\User;
+use App\Models\DaftarPoli;
+use App\Models\Dokter;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class PeriksaController extends Controller
 {
-    /**
-     * Menampilkan form untuk membuat janji periksa (pasien).
-     *
-     * @return \Illuminate\View\View
-     */
-    public function create()
-    {
-        $dokters = User::where('role', 'dokter')->get();
-        return view('pasien.periksa', compact('dokters'));
-    }
-
-    /**
-     * Menyimpan data janji periksa baru (pasien).
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\RedirectResponse
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'id_dokter' => 'required|exists:users,id',
-            'keluhan' => 'required|string|max:1000',
-            'tgl_periksa' => 'required|date_format:Y-m-d\TH:i',
-        ], [
-            'id_dokter.required' => 'Dokter wajib dipilih.',
-            'id_dokter.exists' => 'Dokter tidak valid.',
-            'keluhan.required' => 'Keluhan wajib diisi.',
-            'keluhan.string' => 'Keluhan harus berupa teks.',
-            'keluhan.max' => 'Keluhan maksimal 1000 karakter.',
-            'tgl_periksa.required' => 'Tanggal pemeriksaan wajib diisi.',
-            'tgl_periksa.date_format' => 'Format tanggal tidak valid.',
-        ]);
-
-        Periksa::create([
-            'id_pasien' => Auth::id(),
-            'id_dokter' => $request->id_dokter,
-            'keluhan' => $request->keluhan,
-            'tgl_periksa' => $request->tgl_periksa,
-            'catatan' => '',
-            'biaya_pemeriksaan' => 150000,
-        ]);;
-
-        return redirect()->route('pasien.riwayat')
-            ->with('success', 'Janji periksa berhasil dibuat.');
-    }
-
-    /**
-     * Menampilkan daftar pemeriksaan untuk dokter.
-     *
-     * @return \Illuminate\View\View
-     */
     public function index()
     {
-        $periksas = Periksa::with(['pasien', 'dokter'])
-            ->where('id_dokter', Auth::id())
+        $dokter = auth()->user()->dokter;
+        $daftars = DaftarPoli::with(['pasien', 'jadwal'])
+            ->whereHas('jadwal', function ($q) use ($dokter) {
+                $q->where('dokter_id', $dokter->id);
+            })
+            ->whereDoesntHave('periksa')
             ->get();
 
-        return view('dokter.memeriksa', compact('periksas'));
+        return view('dokter.periksa.index', compact('daftars'));
     }
 
-    /**
-     * Menampilkan riwayat pemeriksaan untuk pasien.
-     *
-     * @return \Illuminate\View\View
-     */
-    public function riwayat()
+    public function edit($id)
     {
-        $periksas = Periksa::with(['dokter', 'detail_periksa.obat'])
-            ->where('id_pasien', Auth::id())
-            ->orderBy('tgl_periksa', 'desc')
-            ->get();
-
-        return view('pasien.riwayat', compact('periksas'));
+        $daftar = DaftarPoli::with('pasien', 'jadwal')->findOrFail($id);
+        $obats = Obat::all();
+        return view('dokter.periksa.edit', compact('daftar', 'obats'));
     }
+
+    public function update(Request $request, $id)
+{
+    $request->validate([
+        'diagnosa' => 'required',
+        'obat_id' => 'required|array|min:1',
+    ]);
+
+    DB::beginTransaction();
+
+    try {
+        $periksa = Periksa::create([
+            'daftar_poli_id' => $id,
+            'tgl_periksa' => now(),
+            'catatan' => $request->diagnosa,
+            'biaya_periksa' => 150000,
+        ]);
+
+        $totalObat = 0;
+
+        foreach ($request->obat_id as $obatId) {
+            $obat = Obat::find($obatId);
+
+            // ⛳ Taruh di sini!
+            
+
+            $totalObat += $obat->harga;
+
+            DetailPeriksa::create([
+                'periksa_id' => $periksa->id,
+                'obat_id' => $obatId,
+                'harga' => $obat->harga,
+            ]);
+            
+        }
+
+        $periksa->total_biaya = 150000 + $totalObat;
+        $periksa->save();
+
+        
+
+
+        DB::commit();
+        return redirect()->route('dokter.periksa.index')->with('success', 'Data pemeriksaan berhasil disimpan.');
+    } catch (\Exception $e) {
+        DB::rollback();
+        \Log::error('Gagal menyimpan periksa: ' . $e->getMessage());
+
+    return redirect()->back()->with('error', 'Terjadi kesalahan saat menyimpan. ' . $e->getMessage());
+
+    }
+}
+
+    
+    public function riwayat()
+{
+    $dokter = Dokter::where('user_id', auth()->id())->first();
+
+    if (!$dokter) {
+        return redirect()->back()->with('error', 'Data dokter tidak ditemukan.');
+    }
+
+    $riwayat = Periksa::with(['daftarPoli.pasien', 'daftarPoli.jadwal'])
+        ->whereHas('daftarPoli.jadwal', function ($query) use ($dokter) {
+            $query->where('dokter_id', $dokter->id);
+        })
+        ->orderByDesc('tgl_periksa')
+        ->get();
+
+    return view('dokter.periksa.riwayat', compact('riwayat'));
+}
+
 }

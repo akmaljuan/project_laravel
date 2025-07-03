@@ -1,29 +1,42 @@
 <?php
+
 namespace App\Models;
 
-use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
+    /**
+     * Atribut yang dapat diisi massal.
+     *
+     * @var array<int, string>
+     */
     protected $fillable = [
-        'nama',
-        'alamat',
-        'no_hp',
-        'role',
+        'name',
         'email',
         'password',
+        'role',
     ];
 
+    /**
+     * Atribut yang disembunyikan saat serialisasi.
+     *
+     * @var array<int, string>
+     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
+    /**
+     * Casting atribut ke tipe data tertentu.
+     *
+     * @return array<string, string>
+     */
     protected function casts(): array
     {
         return [
@@ -32,19 +45,20 @@ class User extends Authenticatable
         ];
     }
 
-    public function periksa_pasien(): HasMany
-    {
-        return $this->hasMany(Periksa::class, 'id_pasien', 'id');
-    }
+    /**
+     * Relasi ke model Pasien.
+     *
+     * Setiap user dengan role "pasien" memiliki satu data pasien.
+     */
+public function pasien()
+{
+    return $this->hasOne(\App\Models\Pasien::class, 'user_id');
+}
 
-    public function periksa_dokter(): HasMany
-    {
-        return $this->hasMany(Periksa::class, 'id_dokter', 'id');
-    }
 
-    public function periksas(): HasMany
-    {
-        return $this->hasMany(Periksa::class, 'id_pasien', 'id')
-            ->orWhere('id_dokter', $this->id);
-    }
+public function dokter()
+{
+    return $this->hasOne(Dokter::class);
+}
+
 }
